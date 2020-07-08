@@ -8,6 +8,7 @@ import {
     UrlAdaptor,
 } from "@syncfusion/ej2-data";
 import { List, ScrollParams, ListRowProps } from "react-virtualized";
+import { data } from "./data";
 
 // interface IFilter {
 //     [key: string]: {
@@ -236,24 +237,28 @@ import { List, ScrollParams, ListRowProps } from "react-virtualized";
 // export default App;
 
 function App() {
-    const batchSize = 50;
-    const [page,setPage] = useState(1);
-    const [data, setData] = useState([]);
-    const [loading,setLoading] = useState(false);
+    const batchSize = 20;
+    const [_, setPage] = useState(1);
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [emp, setEmp] = useState("R.Nandhakumar");
+    const [mac, setMac] = useState("CMMH001");
+    const [status, setStatus] = useState(2);
 
     const fetch = (page:number)=>{
-        new DataManager({
-            url: "http://068787ba03ce.ngrok.io/Tickets/Datasource",
-            adaptor: new UrlAdaptor(),
-        })
-            .executeQuery(new Query().page(page,batchSize))
-            .then((val: any) => {
-                //@ts-ignore
-                setData(data=>([...data,...val.result]));
-                setLoading(false);
-            });
-
+        console.log(page);
+        let predicate = new Predicate("Status","equal",status);
+        predicate = predicate.and("Machine.Name","equal",mac);
+        predicate = predicate.and("Employee.Name","equal",emp);
+        const temp = new DataManager(data as any).executeLocal(new Query().where(predicate).page(page,batchSize)) as any
+        if(page > 1)
+        //@ts-ignore
+            setRows(data=>([...data,...temp]));
+        else
+            setRows(temp);
+        setLoading(false);
     }
+
 
     useEffect(() => {
         fetch(1);
@@ -264,14 +269,15 @@ function App() {
             <div key={row.key} style={row.style}>
                 {
                     //@ts-ignore
-                    data[row.index].Employee.Name
+                    rows[row.index].Employee.Name +"-"+ rows[row.index].Machine.Name + "-" +rows[row.index].Status
+
                 }
             </div>
         );
     }
 
     const handleScroll = (e: ScrollParams) => {
-        if (!loading && e.scrollHeight - (e.scrollTop + e.clientHeight) === 0)
+        if (!loading && e.scrollHeight - (e.scrollTop + e.clientHeight) < 10)
             setLoading(true);
     };
 
@@ -283,13 +289,45 @@ function App() {
             })
     },[loading])
 
-
     return (
         <div>
+            <div style={{display:"flex",justifyContent:"space-evenly"}}>
+                <div>
+                    <select value={mac} onChange={(e)=>setMac(e.target.value)}>
+                        <option value="CMMH001">CMMH001</option>
+                        <option value="CMMH003">CMMH003</option>
+                        <option value="CMMH011">CMMH011</option>
+                        <option value="CMMH002">CMMH002</option>
+                        <option value="CMMH005">CMMH005</option>
+                        <option value="CMGG002">CMGG002</option>
+                    </select>
+                </div>
+                <div>
+                    <select value={emp} onChange={(e)=>setEmp(e.target.value)}>
+                        <option value="R.Nandhakumar">R.Nandhakumar</option>
+                        <option value="OperatorCastings">OperatorCastings</option>
+                        <option value="S.Dhanabal">S.Dhanabal</option>
+                        <option value="OperatorRW">OperatorRW</option>
+                    </select>
+                </div>
+                <div>
+                    <select value={status} onChange={(e)=>setStatus(Number(e.target.value))}>
+                        <option value="0">open</option>
+                        <option value="1">close</option>
+                        <option value="2">waiting</option>
+                    </select>
+                </div>
+                <button onClick={()=>{
+                    setPage(()=>{
+                        fetch(1);
+                        return 1;
+                    })
+                }}>Filter</button>
+            </div>
             <List
                 onScroll={handleScroll}
                 height={200}
-                rowCount={data.length}
+                rowCount={rows.length}
                 rowHeight={20}
                 rowRenderer={rowRenderer}
                 width={500}
